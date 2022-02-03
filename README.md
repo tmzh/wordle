@@ -1,7 +1,14 @@
 # Wordle Solver analysis
 
 ## Naive solution
-Using Donald Knuth's master mind algorithm, we can solve most words within 6 attempts. We start off with word that is made of the most frequent letters.
+Using Donald Knuth's master mind algorithm, we can solve most words within 6 attempts. The algorith works by <...>. 
+
+After each iteration, we have to score the remaining word list to return the best guess. As a simple strategy, we can choose the words containing most common characters.  
+
+```python
+def score_word(word, counter):
+    return sum(counter[c] for c in set(word))
+```
 
 Almost half the time, it only takes 3 attempts to guess the word correctly. 93% of the time we are able to guess within 6 attempts.
 
@@ -39,6 +46,8 @@ fares 3
 wares 2
 ```
 
+The problem here is that once we reach the 3rd guess `rales`, there are 13 more possibilities for the first char. The game treats solving within the first 6 attempts as a win. The best option is to explore the problem space with a bit of stochasticity in the first 3 attempts so that by the time we are down to our 4th attempt 
+
 
 ## First attempt
 Introduce a bit of randomness while exploring
@@ -61,3 +70,11 @@ Explore smartly so that it increases the information available while exploiting.
 Use secretary problem. During exploration shuffle the list and score the first 37% of the words in the list and return the best so far.
 
 How to score
+
+## Fourth attempt
+The intuition behind this is that first the objective during explore phase is different from exploit phase. Objective of explore phase is to maximise the information available for later choices. Low probability events convey more information about the characters that belong and don't belong to our target word. This is opposite to the exploit phase where we want to choose the high probability characters. 
+
+* Low Probability Event: High Information
+* High Probability Event: Low Information
+
+    
