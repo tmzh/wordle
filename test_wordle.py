@@ -1,17 +1,18 @@
 from unittest import TestCase
-from wordle import exclude_chars, include_matches
+from wordle import  compare
 
 
 class Test(TestCase):
-    def test_exclude_chars(self):
-        words = ['arose', 'wharf', 'think']
-        self.assertEqual(['think'], exclude_chars(words, ['a']))
-        self.assertEqual([], exclude_chars(words, ['a', 'i']))
-        self.assertEqual(words, exclude_chars(words, ['x']))
-        self.assertEqual(words, exclude_chars(words, []))
-
-    def test_include_matches(self):
-        words = ['hoard', 'wharf', 'think']
-        self.assertEqual(['think'], include_matches(words, {0: 't'}))
-        self.assertEqual(['hoard', 'wharf'], include_matches(words, {2: 'a'}))
-        self.assertEqual([], include_matches(words, {2: 'x'}))
+    def test_compare(self):
+        params = [
+            # left,   right, (left_as_guess, right_as_guess)
+            ['other', 'arose', ('🟨🟥🟥🟨🟨', '🟥🟨🟨🟥🟨')],
+            ['other', 'quick', ('🟥🟥🟥🟥🟥', '🟥🟥🟥🟥🟥')],
+            ['other', 'bored', ('🟨🟥🟥🟩🟨', '🟥🟨🟨🟩🟥')],
+            ['other', 'other', ('🟩🟩🟩🟩🟩', '🟩🟩🟩🟩🟩')],
+            ['other', 'ether', ('🟥🟩🟩🟩🟩', '🟥🟩🟩🟩🟩')],
+            ['other', 'abade', ('🟥🟥🟥🟨🟥', '🟥🟥🟥🟥🟨')],
+         ]
+        for word, guess, pattern in params:
+            with self.subTest():
+                self.assertEqual(compare(word, guess), pattern)

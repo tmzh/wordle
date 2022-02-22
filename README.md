@@ -1,5 +1,8 @@
 # Wordle Solver analysis
 
+# The game
+After guessing a five-letter word, the game tells you whether any of your letters are in the secret word and whether they are in the correct place. You have six tries to get it right.
+
 ## Naive solution
 Using Donald Knuth's master mind algorithm, we can solve most words within 6 attempts. The algorith works by <...>. 
 
