@@ -1,40 +1,68 @@
-# Wordle Solver analysis
+# Wordle Solver 
+Wordle is a web-based word game which has become incredibly popular during the pandemic. It even got a Google doodle page. This is my own attempt at coming up with a solution strategy for the game.
 
 # The game
-After guessing a five-letter word, the game tells you whether any of your letters are in the secret word and whether they are in the correct place. You have six tries to get it right.
+The game is about guessing a five-letter word which changes every day. You get six tries to get it right. After every guess, the game tells you whether any of your letters are in the secret word and whether they are in the correct place. 
 
-The wordle website uses two dictionaries. The first one is a smaller dictionary consisting of more familiar words is used as the challenge every day. The second word list is a larger one, which consists of words that are accepted as guesses.
+My initial attempts involved getting 5-letter words from a well-known corpus like NLTK. The wordle website uses two dictionaries. The challenges are from the first dictionary which is a smaller one consisting of more familiar words. The second word list is a larger one, which consists of words that are accepted as guesses.
 
 ## Base solution
-Using Donald Knuth's master mind algorithm, we can solve most words within 6 attempts. The algorith works by <...>. 
+The game is very similar to Master Mind game (which in turn is similar to even older game Bulls and Cow). Donald Knuth's master mind algorithm is . The algorith works as follows:
+1. Create a set of candidates
+2. Play an initial guess from this list and get the response
+3. If the response is all green (`ggggg`) game is won
+4. Otherwise, filter the candidate list to contain only those words that would give the response that we got. For example, if we guessed `ether` and got a response `rgggg` then we can reduce our candidate space to [`other`, `ither]
+5. Use a scoring strategy to choose the next best guess and repeat
 
-After each iteration, we have to score the remaining word list to return the best guess. 
+Here is a python implementation:
+
+```python
+class Solver(ABC):
+    def __init__(self, word_list):
+        self.word_list = word_list
+        self.first_word = self.top_word(word_list)
+
+    def top_word(self, words):
+        pass
+
+    def next_guess(self, words, prev_guess=None, prev_result=None, explore=False):
+        if not prev_guess:
+            return self.first_word, words
+        words = list(filter(lambda word: word_matches_pattern(word, prev_guess, prev_result), words))
+        return self.top_word(words), words
+
+    @abstractmethod
+    def score(self, word, words, char_counts):
+        pass
+```
+
+For the initial candidate list, I originally used all 5-letter words for NLTK corpus. But it turns out that the game uses a smaller dictionary of popular words for each day challenge. The game also uses a bigger dictionary of words whose words are accepted as valid guesses. While knowing the word list in advance kills the fun in the challenge, it is ideal for a solver to have a fixed solution space.
+
+Now we need to choose an ideal scoring strategy that would allow us to make first guess as well as choose the best candidates among the remaining after every guess.
+
 
 ### Character frequency
 
-As a simple strategy, we can prioritize the words containing most common characters.  
+As a first pass, we can prioritize guessing the words containing most common characters. This should increase our odds of landing on the correct word. `soare` is the ideal first guess for this scoring strategy as those characters are the most frequent in 5-letter words.
 
 ```python
-def score_word(word, counter):
+from collections import Counter
+
+def top_word(self, words):
+    char_counts = Counter()
+    for w in words: char_counts.update(w)
+    scores = [(self.score(word, words, char_counts), word) for word in words]
+    scores.sort(reverse=True)
+    return scores[0][1]
+
+def score(self, word, counter):
     return sum(counter[c] for c in set(word))
 ```
+True enough, it works well most of the time. Almost half the time, it only takes 3 attempts to guess the word correctly. And 9 out of 10 times we are able to guess within 6 attempts.
 
-Almost half the time, it only takes 3 attempts to guess the word correctly. 93% of the time we are able to guess within 6 attempts.
+![Most frequent characters strategy](frequency_count.png)
 
-```
-from scipy import stats
-
-[stats.percentileofscore(df.steps, x, 'weak') for x in range(1, 7)]
-Out[23]: 
-[1.379895158803577,
- 16.33518347209374,
- 47.50231267345051,
- 71.7468393462843,
- 85.39161270428616,
- 92.5531914893617]
-```
-
-But for certain words, the clues don't converge to a solution soon enough. For example, it takes 13 attempts to predict the word `wares`
+But we can do better. If we look at the words that take long to solve, there are multiple candidates which are too similar to them. For example, it takes 13 attempts to predict the word `wares`
 
 ```
 time_solve('wares', word_list)
@@ -55,32 +83,30 @@ fares 3
 wares 2
 ```
 
-The problem here is that once we reach the 3rd guess `rales`, there are 13 more possibilities for the first char. The game treats solving within the first 6 attempts as a win. The best option is to explore the problem space with a bit of stochasticity in the first 3 attempts so that by the time we are down to our 4th attempt 
+The problem here is that once we reach the 3rd guess `rales`, there are 13 more possibilities for the first char. The only way to find the right answer is to try all 13 possibilities. 
 
+## Random Explore 
+One way to mitigate this scenario is if we can sacrifice first few attempts in trying to "explore" the solution space to learn more about valid and invalid characters. This way we are able to zero in on the right answer much quicker. In a way this is like exploration-exploitation strategies seen in reinforcement learning. After exploration, we can revert to frequency based scoring for exploitation.
 
-## First attempt
-Introduce a bit of randomness while exploring
+```python
+import random
+class RandomExploreExploit(Solver):
+    def next_guess(self, words, prev_guess=None, prev_result=None, explore=False):
+        words = list(filter(lambda word: word_matches_pattern(word, prev_guess, prev_result), words))
+        if explore:
+            random.shuffle(words)
+            return words[0], words[1:]
+        return self.top_word(words), words
 
+    def score(self, word, words, char_counts):
+        return sum(char_counts[c] for c in word)
 ```
-if explore:
-    random.shuffle(words)
-    return words[0]
+![Random Explore](random_explore.png)
+Surprisingly this stochastic approach works better than the first method at a lower cost (we don't do any scoring for the first 3 attempts). We are able to win the game 93% of the time. More specifically, my run failed 154 out of 2135 challenges. Can we do better?
 
-scores = [(score_word(set(word), counter), word) for word in words]
-scores.sort(reverse=True)
-return scores[0][1], words
-```
+## Maximum Entropy
+In the previous strategy, we kind of adapted exploration-exploitation strategy which is normally used for problems whose probability distribution is not known apriori. But in this case, we can do better. We have the word list and we know the probability distribution. So given that we can calculate probability distribution of word
 
-## Second attempt
-Explore smartly so that it increases the information available while exploiting. 
-1. During explore phase, avoid valid and invalid characters
-
-## Third attempt
-Use secretary problem. During exploration shuffle the list and score the first 37% of the words in the list and return the best so far.
-
-How to score
-
-## Fourth attempt
 The intuition behind this is that first the objective during explore phase is different from exploit phase. Objective of explore phase is to maximise the information available for later choices. Low probability events convey more information about the characters that belong and don't belong to our target word. This is opposite to the exploit phase where we want to choose the high probability characters. 
 
 * Low Probability Event: High Information

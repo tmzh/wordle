@@ -164,6 +164,7 @@ def time_solve(target, word_list, solver: Solver):
 
     while word_list:
         next_guess, word_list = solver.next_guess(word_list, last_guess, last_pattern, steps < 3)
+        print(next_guess, len(word_list))
         # last_pattern = compare(next_guess, target)[0]
         last_pattern = compare_results_df[target][next_guess]
         if last_pattern == 'ggggg':
