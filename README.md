@@ -3,10 +3,16 @@
 # The game
 After guessing a five-letter word, the game tells you whether any of your letters are in the secret word and whether they are in the correct place. You have six tries to get it right.
 
-## Naive solution
+The wordle website uses two dictionaries. The first one is a smaller dictionary consisting of more familiar words is used as the challenge every day. The second word list is a larger one, which consists of words that are accepted as guesses.
+
+## Base solution
 Using Donald Knuth's master mind algorithm, we can solve most words within 6 attempts. The algorith works by <...>. 
 
-After each iteration, we have to score the remaining word list to return the best guess. As a simple strategy, we can choose the words containing most common characters.  
+After each iteration, we have to score the remaining word list to return the best guess. 
+
+### Character frequency
+
+As a simple strategy, we can prioritize the words containing most common characters.  
 
 ```python
 def score_word(word, counter):
