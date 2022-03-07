@@ -52,17 +52,6 @@ def entropy_score(guess, word_list):
     return stats.entropy(probs)
 
 
-def top_word(words, use_entropy=False):
-    if use_entropy:
-        scores = [(entropy_score(word, words), word) for word in words]
-    else:
-        counter = Counter()
-        for w in words: counter.update(w)
-        scores = [(frequency_score(word, counter), word) for word in words]
-    scores.sort(reverse=True)
-    return scores[0][1]
-
-
 def word_matches_pattern(word, guess, pattern):
     return compare(guess, word)[0] == pattern
 
@@ -77,7 +66,6 @@ class Solver(ABC):
         for w in words: char_counts.update(w)
         scores = [(self.score(word, words, char_counts), word) for word in words]
         scores.sort(reverse=True)
-        # print(scores)
         return scores[0][1]
 
     def next_guess(self, words, prev_guess=None, prev_result=None, explore=False):
@@ -130,33 +118,6 @@ def generate_comparison_dict(word_list):
         hdf.put(key="df", value=df)
 
 
-def simple_guess(words, prev_result, explore=True):
-    if prev_result:
-        prev_guess, result_pattern = prev_result
-        words = list(filter(lambda word: word_matches_pattern(word, prev_guess, result_pattern), words))
-    return top_word(words), words
-
-
-def simple_guess_with_random_explore(words, prev_result, explore=True):
-    if prev_result:
-        prev_guess, result_pattern = prev_result
-        words = list(filter(lambda word: word_matches_pattern(word, prev_guess, result_pattern), words))
-    if explore:
-        random.shuffle(words)
-        return words[0], words[1:]
-    return top_word(words), words
-
-
-def entropy_explore(words, prev_result, explore=False):
-    if prev_result:
-        prev_guess, result_pattern = prev_result
-        words = list(filter(lambda word: word_matches_pattern(word, prev_guess, result_pattern), words))
-    if explore:
-        return top_word(words, use_entropy=True), words
-    else:
-        return top_word(words, use_entropy=False), words
-
-
 def time_solve(target, word_list, solver: Solver):
     start = time.time()
     steps = 0
@@ -164,8 +125,6 @@ def time_solve(target, word_list, solver: Solver):
 
     while word_list:
         next_guess, word_list = solver.next_guess(word_list, last_guess, last_pattern, steps < 3)
-        print(next_guess, len(word_list))
-        # last_pattern = compare(next_guess, target)[0]
         last_pattern = compare_results_df[target][next_guess]
         if last_pattern == 'ggggg':
             end = time.time()
