@@ -4,17 +4,17 @@ Wordle is a web-based word game which has become incredibly popular during the p
 # The game
 The game is about guessing a five-letter word which changes every day. You get six tries to get it right. After every guess, the game tells you whether any of your letters are in the secret word and whether they are in the correct place. 
 
-My initial attempts involved getting 5-letter words from a well-known corpus like NLTK. The wordle website uses two dictionaries. The challenges are from the first dictionary which is a smaller one consisting of more familiar words. The second word list is a larger one, which consists of words that are accepted as guesses.
+My initial attempts involved getting 5-letter words from a well-known corpus like NLTK. But it turns out that wordle uses a two smaller dictionaries which can be extracted from Javascript. The challenges are from the first dictionary which is a smaller one consisting of more familiar words. The second word list is a larger one, which consists of words that are accepted as guesses. Using a dictionary may sound like cheating, but I just wanted workout the mechanics of a solver for the game. 
 
 ## Base solution
-The game is very similar to Master Mind game (which in turn is similar to even older game Bulls and Cow). Donald Knuth's master mind algorithm is . The algorith works as follows:
+The game is very similar to Master Mind game (which in turn is similar to even older game Bulls and Cow). As a base solution we can use Donald Knuth's Master Mind algorithm. The algorithm works as follows:
 1. Create a set of candidates
 2. Play an initial guess from this list and get the response
 3. If the response is all green (`ggggg`) game is won
-4. Otherwise, filter the candidate list to contain only those words that would give the response that we got. For example, if we guessed `ether` and got a response `rgggg` then we can reduce our candidate space to [`other`, `ither]
+4. Otherwise, filter the candidate list to contain only those words that would give the response that we got. For example, if we guessed `ether` and got a response `rgggg` then we can reduce our candidate space to [`other`, `ither`]
 5. Use a scoring strategy to choose the next best guess and repeat
 
-Here is a python implementation:
+Here is an abstract python implementation of parts of this algorithm:
 
 ```python
 class Solver(ABC):
@@ -36,14 +36,16 @@ class Solver(ABC):
         pass
 ```
 
-For the initial candidate list, I originally used all 5-letter words for NLTK corpus. But it turns out that the game uses a smaller dictionary of popular words for each day challenge. The game also uses a bigger dictionary of words whose words are accepted as valid guesses. While knowing the word list in advance kills the fun in the challenge, it is ideal for a solver to have a fixed solution space.
-
-Now we need to choose an ideal scoring strategy that would allow us to make first guess as well as choose the best candidates among the remaining after every guess.
+Now we need to choose an ideal scoring strategy that would allow us to make first guess as well as choose the best candidates among the remaining after every guess. This is where we can trial a few approaches and see which one gives the best result.
 
 
 ### Character frequency
 
-As a first pass, we can prioritize guessing the words containing most common characters. This should increase our odds of landing on the correct word. `soare` is the ideal first guess for this scoring strategy as those characters are the most frequent in 5-letter words.
+As a first pass, we can prioritize guessing the words containing most common characters. This should increase our odds of landing on the correct word. For example, here is the frequency of characters appearing in all 5 letter words in the dictionary:
+
+![Char frequency in 5 letter words](char_frequency.png)
+
+By this criteria, `soare` is the ideal first guess as it contains the most frequent characters.
 
 ```python
 from collections import Counter
@@ -58,6 +60,7 @@ def top_word(self, words):
 def score(self, word, counter):
     return sum(counter[c] for c in set(word))
 ```
+
 True enough, it works well most of the time. Almost half the time, it only takes 3 attempts to guess the word correctly. And 9 out of 10 times we are able to guess within 6 attempts.
 
 ![Most frequent characters strategy](frequency_count.png)
